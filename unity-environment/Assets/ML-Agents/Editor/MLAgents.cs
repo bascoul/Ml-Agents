@@ -373,6 +373,11 @@ public class MLAgents : EditorWindow
         }
     }
 
+    /// <summary>
+    /// Creates the agent script.
+    /// </summary>
+    /// <param name="copyPath">The path to write the script.</param>
+    /// <param name="scriptName">The name of the script.</param>
     void CreateAgentScript(string copyPath, string scriptName)
     {
         string agentTemplate =
@@ -399,6 +404,11 @@ public class MLAgents : EditorWindow
         }
     }
 
+    /// <summary>
+    /// Creates the decision script.
+    /// </summary>
+    /// <param name="copyPath">The path to write the script.</param>
+    /// <param name="scriptName">The name of the script.</param>
     void CreateDecisionScript(string copyPath, string scriptName)
     {
         string decisionTemplate =
@@ -431,6 +441,9 @@ public class MLAgents : EditorWindow
         }
     }
 
+    /// <summary>
+    /// Edits the file for the current scene.
+    /// </summary>
     public void EditCurriculum()
     {
 
@@ -596,6 +609,9 @@ public class MLAgents : EditorWindow
 
     }
 
+    /// <summary>
+    /// Edits the trainers for the curren scene.
+    /// </summary>
     void EditTrainers()
     {
         Brain[] brains = FindObjectsOfType<Brain>() as Brain[];
