@@ -10,6 +10,7 @@ using Newtonsoft.Json;
 
 
 // TODO: Must be replaced with better serialization
+using System.Runtime.InteropServices;
 public class Curriculum
 {
 
@@ -123,6 +124,15 @@ public class MLAgents : EditorWindow
     bool scriptGenerated;
     string generatingPrefix;
 
+    // Duplicate Area fields
+    GameObject objectToDuplicate;
+    float xDistance;
+    float yDistance;
+    float zDistance;
+    int xNumber;
+    int yNumber;
+    int zNumber;
+
     // Curriculum editing Fields
     string curriculumName;
     Curriculum curr;
@@ -153,7 +163,7 @@ public class MLAgents : EditorWindow
     void OnGUI()
     {
 
-        tab = GUILayout.Toolbar(tab, new string[] { "New Scene", "Curriculum", "Trainers", "Build/Run" });
+        tab = GUILayout.Toolbar(tab, new string[] { "New Scene", "Duplication","Curriculum", "Trainers", "Build/Run" });
         scrollPosition = GUILayout.BeginScrollView(scrollPosition);
 
         currentSceneName = EditorSceneManager.GetActiveScene().name;
@@ -165,12 +175,15 @@ public class MLAgents : EditorWindow
                 GenerateSceneInterface();
                 break;
             case 1:
-                EditCurriculum();
+                DuplicateArea();
                 break;
             case 2:
-                EditTrainers();
+                EditCurriculum();
                 break;
             case 3:
+                EditTrainers();
+                break;
+            case 4:
                 BuildEnvironment();
                 break;
             default:
@@ -178,6 +191,32 @@ public class MLAgents : EditorWindow
 
         }
         GUILayout.EndScrollView();
+
+    }
+
+    private void Update()
+    {
+        //Debug.Log("Update" + scriptGenerated + " " + ScriptLoaded(generatingPrefix));
+        if (scriptGenerated)
+        {
+            if (ScriptLoaded(generatingPrefix))
+            {
+                BuildScene(generatingPrefix);
+                scriptGenerated = false;
+                scriptGeneratedTimer = 0f;
+            }
+            else
+            {
+                scriptGeneratedTimer += Time.fixedDeltaTime;
+
+            }
+            if (scriptGeneratedTimer > 120f)
+            {
+                scriptGeneratedTimer = 0f;
+                scriptGenerated = false;
+                // TODO : An error occured, delete directory of generated scripts
+            }
+        }
 
     }
 
@@ -213,32 +252,6 @@ public class MLAgents : EditorWindow
 
 
     }
-
-	private void Update()
-    {
-        //Debug.Log("Update" + scriptGenerated + " " + ScriptLoaded(generatingPrefix));
-        if (scriptGenerated)
-        {
-            if (ScriptLoaded(generatingPrefix))
-            {
-                BuildScene(generatingPrefix);
-                scriptGenerated = false;
-                scriptGeneratedTimer = 0f;
-            }
-            else
-            {
-                scriptGeneratedTimer += Time.fixedDeltaTime;
-               
-            }
-            if (scriptGeneratedTimer > 120f)
-            {
-                scriptGeneratedTimer = 0f;
-                scriptGenerated = false;
-                // TODO : An error occured, delete directory of generated scripts
-            }
-        }
-
-	}
 
 	bool isValidSceneName(string s)
     {
@@ -442,9 +455,33 @@ public class MLAgents : EditorWindow
     }
 
     /// <summary>
+    /// Duplicates an area.
+    /// </summary>
+    void DuplicateArea()
+    {
+        objectToDuplicate = (GameObject)EditorGUILayout.ObjectField("Object To Duplicate", objectToDuplicate, typeof(GameObject), true);
+        EditorGUILayout.LabelField("X axis");
+        xNumber = EditorGUILayout.IntField("   Duplication", xNumber);
+        xDistance = EditorGUILayout.FloatField("   Separation", xDistance);
+        EditorGUILayout.LabelField("Y axis");
+        yNumber = EditorGUILayout.IntField("   Duplication", yNumber);
+        yDistance = EditorGUILayout.FloatField("   Separation", yDistance);
+        EditorGUILayout.LabelField("Z axis");
+        zNumber = EditorGUILayout.IntField("   Duplication", zNumber);
+        zDistance = EditorGUILayout.FloatField("   Separation", zDistance);
+
+        // TODO :Make sure there are no collisions
+        // TODO :Indicade how many objects will be instanciated
+        if (GUILayout.Button("Duplicate"))
+        {
+            // TODO : loop
+        }
+    }
+
+    /// <summary>
     /// Edits the file for the current scene.
     /// </summary>
-    public void EditCurriculum()
+    void EditCurriculum()
     {
 
         Academy[] _acas = FindObjectsOfType<Academy>() as Academy[];
