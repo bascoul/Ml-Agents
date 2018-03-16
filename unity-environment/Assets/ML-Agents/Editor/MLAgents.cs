@@ -11,6 +11,8 @@ using Newtonsoft.Json;
 
 // TODO: Must be replaced with better serialization
 using System.Runtime.InteropServices;
+using System.Collections.Specialized;
+using System.Net.WebSockets;
 public class Curriculum
 {
 
@@ -126,12 +128,8 @@ public class MLAgents : EditorWindow
 
     // Duplicate Area fields
     GameObject objectToDuplicate;
-    float xDistance;
-    float yDistance;
-    float zDistance;
-    int xNumber;
-    int yNumber;
-    int zNumber;
+    Vector3 duplicateDistance;
+    Vector3 duplicateNumber;
 
     // Curriculum editing Fields
     string curriculumName;
@@ -163,7 +161,7 @@ public class MLAgents : EditorWindow
     void OnGUI()
     {
 
-        tab = GUILayout.Toolbar(tab, new string[] { "New Scene", "Duplication","Curriculum", "Trainers", "Build/Run" });
+        tab = GUILayout.Toolbar(tab, new string[] { "New Scene", "Duplication", "Curriculum", "Trainers", "Build/Run" });
         scrollPosition = GUILayout.BeginScrollView(scrollPosition);
 
         currentSceneName = EditorSceneManager.GetActiveScene().name;
@@ -253,7 +251,7 @@ public class MLAgents : EditorWindow
 
     }
 
-	bool isValidSceneName(string s)
+    bool isValidSceneName(string s)
     {
         // If there is already a scene with th same name
         if (Directory.Exists(rootAssetDirectory + "/" + s))
@@ -301,10 +299,10 @@ public class MLAgents : EditorWindow
 
         EditorSceneManager.NewScene(
             NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
-        
+
         Directory.CreateDirectory(rootAssetDirectory + "/" + prefix);
         EditorSceneManager.SaveScene(
-            EditorSceneManager.GetActiveScene(), 
+            EditorSceneManager.GetActiveScene(),
             rootAssetDirectory + "/" + prefix + "/" + prefix + ".unity");
 
 
@@ -461,21 +459,76 @@ public class MLAgents : EditorWindow
     {
         objectToDuplicate = (GameObject)EditorGUILayout.ObjectField("Object To Duplicate", objectToDuplicate, typeof(GameObject), true);
         EditorGUILayout.LabelField("X axis");
-        xNumber = EditorGUILayout.IntField("   Duplication", xNumber);
-        xDistance = EditorGUILayout.FloatField("   Separation", xDistance);
+        duplicateNumber.x = Mathf.Max(EditorGUILayout.IntField(
+            "   Duplication", (int)duplicateNumber.x), 1);
+        duplicateDistance.x = Mathf.Max(EditorGUILayout.FloatField(
+            "   Separation", duplicateDistance.x), 0);
         EditorGUILayout.LabelField("Y axis");
-        yNumber = EditorGUILayout.IntField("   Duplication", yNumber);
-        yDistance = EditorGUILayout.FloatField("   Separation", yDistance);
+        duplicateNumber.y = Mathf.Max(EditorGUILayout.IntField(
+            "   Duplication", (int)duplicateNumber.y), 1);
+        duplicateDistance.y = Mathf.Max(EditorGUILayout.FloatField(
+            "   Separation", duplicateDistance.y), 0);
         EditorGUILayout.LabelField("Z axis");
-        zNumber = EditorGUILayout.IntField("   Duplication", zNumber);
-        zDistance = EditorGUILayout.FloatField("   Separation", zDistance);
+        duplicateNumber.z = Mathf.Max(EditorGUILayout.IntField(
+            "   Duplication", (int)duplicateNumber.z), 1);
+        duplicateDistance.z = Mathf.Max(EditorGUILayout.FloatField(
+            "   Separation", duplicateDistance.z), 0);
 
-        // TODO :Make sure there are no collisions
-        // TODO :Indicade how many objects will be instanciated
+        if (objectToDuplicate != null)
+        {
+            // TODO :Make sure there are no collisions
+            Collider[] collision = Physics.OverlapBox(
+                objectToDuplicate.transform.position +
+                Vector3.Scale(duplicateDistance / 2, duplicateNumber),
+                Vector3.Scale(duplicateDistance / 2, (duplicateNumber + Vector3.one)),
+                Quaternion.identity);
+            Collider[] childColliders =
+        objectToDuplicate.GetComponentsInChildren<Collider>();
+            foreach (Collider c in collision)
+            {
+                if (!(childColliders.Contains(c)))
+                {
+                    EditorGUILayout.HelpBox(
+                        string.Format("The object {0} will be colliding with the " +
+                                      "duplicated objects.", c.gameObject.name),
+                    MessageType.Warning);
+                }
+            }
+        }
+        int totalNumberObjects = (int)((duplicateNumber.x)
+                               * (duplicateNumber.y)
+                               * (duplicateNumber.z) - 1);
+        EditorGUILayout.LabelField(
+            string.Format("{0} Clones would be created.", 
+                          totalNumberObjects.ToString()));
+        
+
+        EditorGUI.BeginDisabledGroup(objectToDuplicate == null);
         if (GUILayout.Button("Duplicate"))
         {
-            // TODO : loop
+            Vector3 spawnPosition = objectToDuplicate.transform.position;
+            for (int ii = 0; ii < duplicateNumber.x; ii++)
+            {
+                for (int jj = 0; jj < duplicateNumber.x; jj++)
+                {
+                    for (int kk = 0; kk < duplicateNumber.x; kk++)
+                    {
+                        if ((ii == 0) && (jj == 0) && (kk == 0))
+                        {
+                            continue;
+                        }
+
+                        Instantiate(objectToDuplicate, spawnPosition +
+                                    Vector3.Scale(
+                                        duplicateDistance,
+                                        new Vector3(ii,jj,kk)),
+                                    objectToDuplicate.transform.rotation);
+                    }
+                }
+            }
+            objectToDuplicate = null;
         }
+        EditorGUI.EndDisabledGroup();
     }
 
     /// <summary>
@@ -483,7 +536,7 @@ public class MLAgents : EditorWindow
     /// </summary>
     void EditCurriculum()
     {
-
+        // TODO : Use other serialization technique and clean the logic
         Academy[] _acas = FindObjectsOfType<Academy>() as Academy[];
         if (_acas.Count() < 1)
         {
