@@ -822,6 +822,7 @@ namespace MLAgents
             {
                 if (agentParameters.resetOnDone)
                 {
+                    AgentOnDone();
                     if (agentParameters.onDemandDecision)
                     {
                         if (!hasAlreadyReset)

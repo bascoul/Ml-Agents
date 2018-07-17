@@ -240,6 +240,9 @@ class PPOTrainer(Trainer):
         :return: Intrinsic rewards for all agents.
         """
         if self.use_curiosity:
+            if not next_info.agents:
+                return list(np.array(curr_info.rewards) * 0.0)
+
             feed_dict = {self.model.batch_size: len(next_info.vector_observations), self.model.sequence_length: 1}
             if self.is_continuous_action:
                 feed_dict[self.model.output] = next_info.previous_vector_actions
