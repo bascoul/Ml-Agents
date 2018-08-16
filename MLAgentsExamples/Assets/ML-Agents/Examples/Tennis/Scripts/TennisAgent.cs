@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using UnityEngine;
 using UnityEngine.UI;
 using MLAgents;
@@ -19,11 +20,14 @@ public class TennisAgent : Agent
     private Rigidbody ballRb;
     private float invertMult;
 
+    private int counter;
+
     public override void InitializeAgent()
     {
         agentRb = GetComponent<Rigidbody>();
         ballRb = GetComponent<Rigidbody>();
         textComponent = scoreText.GetComponent<Text>();
+        counter = Random.RandomRange(0, 3);
     }
 
     public override void CollectObservations()
@@ -69,5 +73,20 @@ public class TennisAgent : Agent
 
         transform.position = new Vector3(-invertMult * Random.Range(6f, 8f), -1.5f, 0f) + transform.parent.transform.position;
         agentRb.velocity = new Vector3(0f, 0f, 0f);
+    }
+
+    private void FixedUpdate()
+    {
+        counter++;
+        if (counter > 5)
+        {
+            counter = 0;
+            RequestDecision();
+        }
+        else
+        {
+            RequestAction();
+        }
+        
     }
 }
