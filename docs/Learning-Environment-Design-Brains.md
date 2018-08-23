@@ -2,7 +2,7 @@
 
 The Brain encapsulates the decision making process. Brain objects must be children of the Academy in the Unity scene hierarchy. Every Agent must be assigned a Brain, but you can use the same Brain with more than one Agent. You can also create several Brains, attach each of the Brain to one or more than one Agent.  
 
-Use the Brain class directly, rather than a subclass. Brain behavior is determined by the **Brain Type**. ML-Agents defines four Brain Types:
+Use the Brain class directly, rather than a subclass. Brain behavior is determined by the **Brain Type**. The ML-Agents toolkit defines four Brain Types:
 
 * [External](Learning-Environment-Design-External-Internal-Brains.md) — The **External** and **Internal** types typically work together; set **External** when training your agents. You can also use the **External** brain to communicate with a Python script via the Python `UnityEnvironment` class included in the Python portion of the ML-Agents SDK.
 * [Internal](Learning-Environment-Design-External-Internal-Brains.md) – Set **Internal**  to make use of a trained model.
@@ -21,13 +21,13 @@ The Brain Inspector window in the Unity Editor displays the properties assigned 
 
 * `Brain Parameters` - Define vector observations, visual observation, and vector actions for the Brain.
     * `Vector Observation` 
-    	* `Space Type` - Corresponds to whether the observation vector contains a single integer (Discrete) or a series of real-valued floats (Continuous).
-    	* `Space Size` - Length of vector observation for brain (In _Continuous_ space type). Or number of possible values (in _Discrete_ space type).
+    	* `Space Size` - Length of vector observation for brain.
 		* `Stacked Vectors` - The number of previous vector observations that will be stacked and used collectively for decision making. This results in the effective size of the vector observation being passed to the brain being: _Space Size_ x _Stacked Vectors_.
 	* `Visual Observations`	- Describes height, width, and whether to grayscale visual observations for the Brain.
 	* `Vector Action`
 		* `Space Type` - Corresponds to whether action vector contains a single integer (Discrete) or a series of real-valued floats (Continuous).
-		* `Space Size` - Length of action vector for brain (In _Continuous_ state space). Or number of possible values (in _Discrete_ action space).
+		* `Space Size` (Continuous) - Length of action vector for brain.
+		* `Branches` (Discrete) - An array of integers, defines multiple concurent discrete actions. The values in the `Branches` array correspond to the number of possible discrete values for each action branch.
 		* `Action Descriptions` - A list of strings used to name the available actions for the Brain.
 * `Type of Brain` - Describes how the Brain will decide actions.
     * `External` - Actions are decided by an external process, such as the PPO training process.

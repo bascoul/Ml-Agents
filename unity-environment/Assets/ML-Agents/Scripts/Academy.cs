@@ -10,7 +10,7 @@ using UnityEditor;
 /**
  * Welcome to Unity Machine Learning Agents (ML-Agents).
  * 
- * ML-Agents contains five entities: Academy, Brain, Agent, Communicator and
+ * The ML-Agents toolkit contains five entities: Academy, Brain, Agent, Communicator and
  * Python API. The academy, and all its brains and connected agents live within
  * a learning environment (herin called Environment), while the communicator
  * manages the communication between the learning environment and the Python
@@ -306,6 +306,7 @@ namespace MLAgents
                             (MLAgents.CommunicatorObjects.BrainTypeProto)
                             brain.brainType));
                 }
+                
 
                 academyParameters.EnvironmentParameters =
                     new MLAgents.CommunicatorObjects.EnvironmentParametersProto();
@@ -342,6 +343,18 @@ namespace MLAgents
             // the developer in the Editor.
             SetIsInference(!brainBatcher.GetIsTraining());
             ConfigureEnvironment();
+        }
+
+        private void UpdateResetParameters()
+        {
+            var newResetParameters = brainBatcher.GetEnvironmentParameters();
+            if (newResetParameters != null)
+            {
+                foreach (var kv in newResetParameters.FloatParameters)
+                {
+                    resetParameters[kv.Key] = kv.Value;
+                }
+            }
         }
 
         void HandleLog(string logString, string stackTrace, LogType type)
@@ -526,15 +539,7 @@ namespace MLAgents
                 if (brainBatcher.GetCommand() ==
                     MLAgents.CommunicatorObjects.CommandProto.Reset)
                 {
-                    // Update reset parameters.
-                    var newResetParameters = brainBatcher.GetEnvironmentParameters();
-                    if (newResetParameters != null)
-                    {
-                        foreach (var kv in newResetParameters.FloatParameters)
-                        {
-                            resetParameters[kv.Key] = kv.Value;
-                        }
-                    }
+                    UpdateResetParameters();
 
                     SetIsInference(!brainBatcher.GetIsTraining());
 
@@ -553,6 +558,7 @@ namespace MLAgents
             }
             else if (!firstAcademyReset)
             {
+                UpdateResetParameters();
                 ForcedFullReset();
             }
 

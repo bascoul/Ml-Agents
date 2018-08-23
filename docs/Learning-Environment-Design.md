@@ -2,7 +2,7 @@
 
 Reinforcement learning is an artificial intelligence technique that trains _agents_ to perform tasks by rewarding desirable behavior. During reinforcement learning, an agent explores its environment, observes the state of things, and, based on those observations, takes an action. If the action leads to a better state, the agent receives a positive reward. If it leads to a less desirable state, then the agent receives no reward or a negative reward (punishment). As the agent learns during training, it optimizes its decision making so that it receives the maximum reward over time.
 
-ML-Agents uses a reinforcement learning technique called [Proximal Policy Optimization (PPO)](https://blog.openai.com/openai-baselines-ppo/). PPO uses a neural network to approximate the ideal function that maps an agent's observations to the best action an agent can take in a given state. The ML-Agents PPO algorithm is implemented in TensorFlow and runs in a separate Python process (communicating with the running Unity application over a socket). 
+The ML-Agents toolkit uses a reinforcement learning technique called [Proximal Policy Optimization (PPO)](https://blog.openai.com/openai-baselines-ppo/). PPO uses a neural network to approximate the ideal function that maps an agent's observations to the best action an agent can take in a given state. The ML-Agents PPO algorithm is implemented in TensorFlow and runs in a separate Python process (communicating with the running Unity application over a socket). 
 
 **Note:** if you aren't studying machine and reinforcement learning as a subject and just want to train agents to accomplish tasks, you can treat PPO training as a _black box_. There are a few training-related parameters to adjust inside Unity as well as on the Python training side, but you do not need in-depth knowledge of the algorithm itself to successfully create and train agents. Step-by-step procedures for running the training process are provided in the [Training section](Training-ML-Agents.md). 
 
@@ -18,7 +18,7 @@ The ML-Agents Academy class orchestrates the agent simulation loop as follows:
 2. Calls the `AgentReset()` function for each agent in the scene.
 3. Calls the  `CollectObservations()` function for each agent in the scene.
 4. Uses each agent's Brain class to decide on the agent's next action. 
-5. Calls your subclass's `AcademyAct()` function.
+5. Calls your subclass's `AcademyStep()` function.
 6. Calls the `AgentAction()` function for each agent in the scene, passing in the action chosen by the agent's brain. (This function is not called if the agent is done.)
 7. Calls the agent's `AgentOnDone()` function if the agent has reached its `Max Step` count or has otherwise marked itself as `done`. Optionally, you can set an agent to restart if it finishes before the end of an episode. In this case, the Academy calls the `AgentReset()` function.
 8. When the Academy reaches its own `Max Step` count, it starts the next episode again by calling your Academy subclass's `AcademyReset()` function.
@@ -29,7 +29,7 @@ To create a training environment, extend the Academy and Agent classes to implem
 
 ## Organizing the Unity Scene
 
-To train and use ML-Agents in a Unity scene, the scene must contain a single Academy subclass along with as many Brain objects and Agent subclasses as you need. Any Brain instances in the scene must be attached to GameObjects that are children of the Academy in the Unity Scene Hierarchy. Agent instances should be attached to the GameObject representing that agent.
+To train and use the ML-Agents toolkit in a Unity scene, the scene must contain a single Academy subclass along with as many Brain objects and Agent subclasses as you need. Any Brain instances in the scene must be attached to GameObjects that are children of the Academy in the Unity Scene Hierarchy. Agent instances should be attached to the GameObject representing that agent.
 
 ![Scene Hierarchy](images/scene-hierarchy.png)
 
@@ -76,7 +76,7 @@ See [Agents](Learning-Environment-Design-Agents.md) for detailed information abo
 
 ## Environments
 
-An _environment_ in ML-Agents can be any scene built in Unity. The Unity scene provides the environment in which agents observe, act, and learn. How you set up the Unity scene to serve as a learning environment really depends on your goal. You may be trying to solve a specific reinforcement learning problem of limited scope, in which case you can use the same scene for both training and for testing trained agents. Or, you may be training agents to operate in a complex game or simulation. In this case, it might be more efficient and practical to create a purpose-built training scene.
+An _environment_ in the ML-Agents toolkit can be any scene built in Unity. The Unity scene provides the environment in which agents observe, act, and learn. How you set up the Unity scene to serve as a learning environment really depends on your goal. You may be trying to solve a specific reinforcement learning problem of limited scope, in which case you can use the same scene for both training and for testing trained agents. Or, you may be training agents to operate in a complex game or simulation. In this case, it might be more efficient and practical to create a purpose-built training scene.
 
 Both training and testing (or normal game) scenes must contain an Academy object to control the agent decision making process. The Academy defines several properties that can be set differently for a training scene versus a regular scene. The Academy's **Configuration** properties control rendering and time scale. You can set the **Training Configuration** to minimize the time Unity spends rendering graphics in order to speed up training. You may need to adjust the other functional, Academy settings as well. For example, `Max Steps` should be as short as possible for training — just long enough for the agent to accomplish its task, with some extra time for "wandering" while it learns. In regular scenes, you often do not want the Academy to reset the scene at all; if so, `Max Steps` should be set to zero. 
 

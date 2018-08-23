@@ -1,12 +1,12 @@
 # Training ML-Agents
 
-ML-Agents conducts training using an external Python training process. During training, this external process communicates with the Academy object in the Unity scene to generate a block of agent experiences. These experiences become the training set for a neural network used to optimize the agent's policy (which is essentially a mathematical function mapping observations to actions). In reinforcement learning, the neural network optimizes the policy by maximizing the expected rewards. In imitation learning, the neural network optimizes the policy to achieve the smallest difference between the actions chosen by the agent trainee and the actions chosen by the expert in the same situation. 
+The ML-Agents toolkit conducts training using an external Python training process. During training, this external process communicates with the Academy object in the Unity scene to generate a block of agent experiences. These experiences become the training set for a neural network used to optimize the agent's policy (which is essentially a mathematical function mapping observations to actions). In reinforcement learning, the neural network optimizes the policy by maximizing the expected rewards. In imitation learning, the neural network optimizes the policy to achieve the smallest difference between the actions chosen by the agent trainee and the actions chosen by the expert in the same situation. 
 
 The output of the training process is a model file containing the optimized policy. This model file is a TensorFlow data graph containing the mathematical operations and the optimized weights selected during the training process. You can use the generated model file with the Internal Brain type in your Unity project to decide the best course of action for an agent. 
 
 Use the Python program, `learn.py` to train your agents. This program can be found in the `python` directory of the ML-Agents SDK. The [configuration file](#training-config-file), `trainer_config.yaml` specifies the hyperparameters used during training. You can edit this file with a text editor to add a specific configuration for each brain.
 
-For a broader overview of reinforcement learning, imitation learning and the ML-Agents training process, see [ML-Agents Overview](ML-Agents-Overview.md).
+For a broader overview of reinforcement learning, imitation learning and the ML-Agents training process, see [ML-Agents Toolkit Overview](ML-Agents-Overview.md).
 
 ## Training with learn.py
 
@@ -49,6 +49,7 @@ In addition to passing the path of the Unity executable containing your training
 * `--keep-checkpoints=<n>` – Specify the maximum number of model checkpoints to keep. Checkpoints are saved after the number of steps specified by the `save-freq` option. Once the maximum number of checkpoints has been reached, the oldest checkpoint is deleted when saving a new checkpoint. Defaults to 5.
 * `--lesson=<n>` – Specify which lesson to start with when performing curriculum training. Defaults to 0.
 * `--load` – If set, the training code loads an already trained model to initialize the neural network before training. The learning code looks for the model in `python/models/<run-id>/` (which is also where it saves models at the end of training). When not set (the default), the neural network weights are randomly initialized and an existing model is not loaded.
+* `--num-runs=<n>` - Sets the number of concurrent training sessions to perform. Default is set to 1. Set to higher values when benchmarking performance and multiple training sessions is desired. Training sessions are independent, and do not improve learning performance.
 * `--run-id=<path>` – Specifies an identifier for each training run. This identifier is used to name the subdirectories in which the trained model and summary statistics are saved as well as the saved model itself. The default id is "ppo". If you use TensorBoard to view the training statistics, always set a unique run-id for each training run. (The statistics for all runs with the same id are combined as if they were produced by a the same session.)
 * `--save-freq=<n>` Specifies how often (in  steps) to save the model during training. Defaults to 50000.
 * `--seed=<n>` – Specifies a number to use as a seed for the random number generator used by the training code.
@@ -68,7 +69,7 @@ The training config file, `trainer_config.yaml` specifies the training method, t
 | batches_per_epoch | In imitation learning, the number of batches of training examples to collect before training the model.| BC |
 | beta | The strength of entropy regularization.| PPO, BC |
 | brain\_to\_imitate | For imitation learning, the name of the GameObject containing the Brain component to imitate. | BC |
-| buffer_size | The number of experiences to collect before updating the policy model. | PPO, BC |
+| buffer_size | The number of experiences to collect before updating the policy model. | PPO |
 | curiosity\_enc\_size | The size of the encoding to use in the forward and inverse models in the Curioity module. | PPO |
 | curiosity_strength | Magnitude of intrinsic reward generated by Intrinsic Curiosity Module. | PPO |
 | epsilon | Influences how rapidly the policy can evolve during training.| PPO, BC |

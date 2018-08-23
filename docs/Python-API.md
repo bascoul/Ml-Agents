@@ -1,6 +1,6 @@
 # Python API
 
-ML-Agents provides a Python API for controlling the agent simulation loop of a environment or game built with Unity. This API is used by the ML-Agent training algorithms (run with `learn.py`), but you can also write your Python programs using this API. 
+The ML-Agents toolkit provides a Python API for controlling the agent simulation loop of a environment or game built with Unity. This API is used by the ML-Agent training algorithms (run with `learn.py`), but you can also write your Python programs using this API. 
 
 The key objects in the Python API include:
 
@@ -12,7 +12,7 @@ These classes are all defined in the `python/unityagents` folder of the ML-Agent
 
 To communicate with an agent in a Unity environment from a Python program, the agent must either use an **External** brain or use a brain that is broadcasting (has its **Broadcast** property set to true). Your code is expected to return actions for agents with external brains, but can only observe broadcasting brains (the information you receive for an agent is the same in both cases). See [Using the Broadcast Feature](Learning-Environment-Design-Brains.md#using-the-broadcast-feature).
 
-For a simple example of using the Python API to interact with a Unity environment, see the Basic [Jupyter](Background-Jupyter.md) notebook (`python/Basics.ipynb`), which opens an environment, runs a few simulation steps taking random actions, and closes the environment. 
+For a simple example of using the Python API to interact with a Unity environment, see the Basic [Jupyter](Background-Jupyter.md) notebook (`python/notebooks/getting-started.ipynb`), which opens an environment, runs a few simulation steps taking random actions, and closes the environment. 
 
 _Notice: Currently communication between Unity and Python takes place over an open socket without authentication. As such, please make sure that the network where training takes place is secure. This will be addressed in a future release._
 
@@ -36,14 +36,14 @@ If you want to directly interact with the Editor, you need to use `file_name=Non
 A BrainInfo object contains the following fields:
 
 * **`visual_observations`** : A list of 4 dimensional numpy arrays. Matrix n of the list corresponds to the n<sup>th</sup> observation of the brain. 
-* **`vector_observations`** : A two dimensional numpy array of dimension `(batch size, vector observation size)` if the vector observation space is continuous and `(batch size, 1)` if the vector observation space is discrete.
+* **`vector_observations`** : A two dimensional numpy array of dimension `(batch size, vector observation size)`.
 * **`text_observations`** : A list of string corresponding to the agents text observations.
 * **`memories`** : A two dimensional numpy array of dimension `(batch size, memory size)` which corresponds to the memories sent at the previous step.
 * **`rewards`** : A list as long as the number of agents using the brain containing the rewards they each obtained at the previous step. 
 * **`local_done`** : A list as long as the number of agents using the brain containing  `done` flags (whether or not the agent is done). 
 * **`max_reached`** : A list as long as the number of agents using the brain containing true if the agents reached their max steps.
 * **`agents`** : A list of the unique ids of the agents using the brain.
-* **`previous_actions`** : A two dimensional numpy array of dimension `(batch size, vector action size)` if the vector action space is continuous and `(batch size, 1)` if the vector action space is discrete.
+* **`previous_actions`** : A two dimensional numpy array of dimension `(batch size, vector action size)` if the vector action space is continuous and `(batch size, number of branches)` if the vector action space is discrete.
 
 Once loaded, you can use your UnityEnvironment object, which referenced by a variable named `env` in this example, can be used in the following way:  
 - **Print : `print(str(env))`**  
