@@ -1,7 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using System.Security.AccessControl;
-using UnityEngine;
+﻿using UnityEngine;
 
 public class TennisArea : MonoBehaviour {
 
@@ -9,6 +6,7 @@ public class TennisArea : MonoBehaviour {
     public GameObject agentA;
     public GameObject agentB;
     private Rigidbody ballRb;
+    public bool reset3D;
 
     // Use this for initialization
     void Start ()
@@ -17,17 +15,19 @@ public class TennisArea : MonoBehaviour {
         MatchReset();
     }
     
-    public void MatchReset() 
+    public void MatchReset()
     {
+        var ballZPosition = reset3D ? Random.Range(-3f, 3f) : 0f;
+
         float ballOut = Random.Range(6f, 8f);
         int flip = Random.Range(0, 2);
         if (flip == 0)
         {
-            ball.transform.position = new Vector3(-ballOut, 6f, 0f) + transform.position;
+            ball.transform.position = new Vector3(-ballOut, 6f, ballZPosition) + transform.position;
         }
         else
         {
-            ball.transform.position = new Vector3(ballOut, 6f, 0f) + transform.position;
+            ball.transform.position = new Vector3(ballOut, 6f, ballZPosition) + transform.position;
         }
         ballRb.velocity = new Vector3(0f, 0f, 0f);
         ball.transform.localScale = new Vector3(1, 1, 1);

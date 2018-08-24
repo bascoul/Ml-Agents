@@ -1,7 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using MLAgents;
-using UnityEngine;
+﻿using UnityEngine;
 
 public class HitWall : MonoBehaviour
 {
@@ -26,14 +23,12 @@ public class HitWall : MonoBehaviour
         {
             if (lastAgentHit == 0)
             {
-                agentA.AddReward( 0.1f);
+                agentA.AddReward(1.0f);
             }
             else
             {
-                agentB.AddReward(0.1f);
+                agentB.AddReward(1.0f);
             }
-            lastAgentHit = 0;
-
         }
     }
 
@@ -75,7 +70,7 @@ public class HitWall : MonoBehaviour
             {
                 if (lastAgentHit == 0 || lastAgentHit == -1)
                 {
-                    agentA.AddReward( -0.01f);
+                    agentA.AddReward(-0.01f);
                     agentB.SetReward(0);
                     agentB.score += 1;
                 }
@@ -102,7 +97,8 @@ public class HitWall : MonoBehaviour
                     agentA.score += 1;
                 }
             }
-            else if (collision.gameObject.name == "net")
+            else if (collision.gameObject.name == "net" || collision.gameObject.name == "wallC" ||
+                     collision.gameObject.name == "wallD")
             {
                 if (lastAgentHit == 0)
                 {
