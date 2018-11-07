@@ -94,8 +94,8 @@ class UnityEnvironment(object):
                     "vectorObservationSize": brain_param.vector_observation_size,
                     "numStackedVectorObservations": brain_param.num_stacked_vector_observations,
                     "cameraResolutions": resolution,
-                    "vectorActionSize": brain_param.vector_action_size,
-                    "vectorActionDescriptions": brain_param.vector_action_descriptions,
+                    "vectorActionSize": list(brain_param.vector_action_size),
+                    "vectorActionDescriptions": list(brain_param.vector_action_descriptions),
                     "vectorActionSpaceType": brain_param.vector_action_space_type
                 })
             if brain_param.brain_type == 2:

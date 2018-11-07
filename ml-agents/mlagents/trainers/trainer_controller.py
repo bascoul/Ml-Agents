@@ -12,6 +12,7 @@ import tensorflow as tf
 from tensorflow.python.tools import freeze_graph
 from mlagents.envs.environment import UnityEnvironment
 from mlagents.envs.exception import UnityEnvironmentException
+from mlagents.envs.meta_environment import MetaUnityEnvironment
 
 from mlagents.trainers.ppo.trainer import PPOTrainer
 from mlagents.trainers.bc.trainer import BehavioralCloningTrainer
@@ -19,11 +20,12 @@ from mlagents.trainers.meta_curriculum import MetaCurriculum
 from mlagents.trainers.exception import MetaCurriculumError
 
 
+
 class TrainerController(object):
     def __init__(self, env_path, run_id, save_freq, curriculum_folder,
                  fast_simulation, load, train, worker_id, keep_checkpoints,
                  lesson, seed, docker_target_name,
-                 trainer_config_path, no_graphics):
+                 trainer_config_path, no_graphics, num_env):
         """
         :param env_path: Location to the environment executable to be loaded.
         :param run_id: The sub-directory name for model and summary statistics
@@ -92,13 +94,22 @@ class TrainerController(object):
         self.keep_checkpoints = keep_checkpoints
         self.trainers = {}
         self.seed = seed
+        self.num_env = num_env
         np.random.seed(self.seed)
         tf.set_random_seed(self.seed)
-        self.env = UnityEnvironment(file_name=env_path,
-                                    worker_id=self.worker_id,
-                                    seed=self.seed,
-                                    docker_training=self.docker_training,
-                                    no_graphics=no_graphics)
+        print("About to call MetaUnityEnvironment")
+        self.env = MetaUnityEnvironment(file_name=env_path,
+                                        # worker_id=self.worker_id,
+                                        # seed=self.seed,
+                                        # docker_training=self.docker_training,
+                                        num_env=self.num_env
+                                        )
+        print("Lanched the Meta Environments")
+        # self.env = UnityEnvironment(file_name=env_path,
+        #                             worker_id=self.worker_id,
+        #                             seed=self.seed,
+        #                             docker_training=self.docker_training,
+        #                             no_graphics=no_graphics)
         if env_path is None:
             self.env_name = 'editor_' + self.env.academy_name
         else:
