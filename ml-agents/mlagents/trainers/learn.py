@@ -1,5 +1,6 @@
 # # Unity ML-Agents Toolkit
 
+import ray
 import logging
 
 from multiprocessing import Process, Queue
@@ -37,13 +38,14 @@ def run_training(sub_id, run_seed, run_options, process_queue):
     fast_simulation = not bool(run_options['--slow'])
     no_graphics = run_options['--no-graphics']
     trainer_config_path = run_options['<trainer-config-path>']
+    num_env = int(run_options['--num-env'])
 
     # Create controller and launch environment.
     tc = TrainerController(env_path, run_id + '-' + str(sub_id),
                            save_freq, curriculum_file, fast_simulation,
                            load_model, train_model, worker_id + sub_id,
                            keep_checkpoints, lesson, run_seed,
-                           docker_target_name, trainer_config_path, no_graphics)
+                           docker_target_name, trainer_config_path, no_graphics, num_env)
 
     # Signal that environment has been launched.
     process_queue.put(True)
@@ -94,6 +96,7 @@ def main():
       --worker-id=<n>            Number to add to communication port (5005) [default: 0].
       --docker-target-name=<dt>  Docker volume to store training-specific files [default: None].
       --no-graphics              Whether to run the environment in no-graphics mode [default: False].
+      --num-env=<n>              Number of concurrent training environment for one training sessions [default:1]
     '''
 
     options = docopt(_USAGE)
