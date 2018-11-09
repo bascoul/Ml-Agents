@@ -4,6 +4,7 @@ import numpy as np
 from mlagents.envs import UnityEnvironment
 from gym import error, spaces
 
+from ray.rllib.env.multi_agent_env import MultiAgentEnv
 
 class UnityGymException(error.Error):
     """
@@ -16,14 +17,14 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("gym_unity")
 
 
-class UnityEnv(gym.Env):
+class UnityEnv(MultiAgentEnv):
     """
     Provides Gym wrapper for Unity Learning Environments.
     Multi-agent environments use lists for object types, as done here:
     https://github.com/openai/multiagent-particle-envs
     """
 
-    def __init__(self, environment_filename: str, worker_id=0, use_visual=False, multiagent=False):
+    def __init__(self, config, environment_filename: str, worker_id=0, use_visual=True, docker_training=False):
         """
         Environment initialization
         :param environment_filename: The UnityEnvironment path or file to be wrapped in the gym.
@@ -31,12 +32,13 @@ class UnityEnv(gym.Env):
         :param use_visual: Whether to use visual observation or vector observation.
         :param multiagent: Whether to run in multi-agent mode (lists of obs, reward, done).
         """
-        self._env = UnityEnvironment(environment_filename, worker_id)
+        self._env = UnityEnvironment(environment_filename, worker_id, docker_training=docker_training)
         self.name = self._env.academy_name
         self.visual_obs = None
         self._current_state = None
         self._n_agents = None
-        self._multiagent = multiagent
+        self._multiagent = True
+        self._reset_count = 0
 
         # Check brain configuration
         if len(self._env.brains) != 1:
@@ -61,18 +63,20 @@ class UnityEnv(gym.Env):
                 "if it is wrapped in a gym.")
 
         # Check for number of agents in scene.
-        initial_info = self._env.reset()[self.brain_name]
-        self._check_agents(len(initial_info.agents))
+        self.initial_info = self._env.reset()[self.brain_name]
+        self._check_agents(len(self.initial_info.agents))
 
         # Set observation and action spaces
         if brain.vector_action_space_type == "discrete":
             if len(brain.vector_action_space_size) == 1:
                 self._action_space = spaces.Discrete(brain.vector_action_space_size[0])
             else:
-                self._action_space = spaces.MultiDiscrete(brain.vector_action_space_size)
+                self._action_space = spaces.Tuple(tuple(map(lambda x: spaces.Discrete(x), brain.vector_action_space_size)))
+                #self._action_space = spaces.MultiDiscrete(brain.vector_action_space_size)
         else:
             high = np.array([1] * brain.vector_action_space_size[0])
             self._action_space = spaces.Box(-high, high, dtype=np.float32)
+
         high = np.array([np.inf] * brain.vector_observation_space_size)
         self.action_meanings = brain.vector_action_descriptions
         if self.use_visual:
@@ -93,7 +97,22 @@ class UnityEnv(gym.Env):
         Returns: observation (object/list): the initial observation of the
             space.
         """
-        info = self._env.reset()[self.brain_name]
+        self._reset_count += 1
+        if self._reset_count == 1:
+            obs, reward, done, info = self._multi_step(self.initial_info)
+            return obs
+        elif self.last_action == "reset":
+            obs, reward, done, info = self._multi_step(self.initial_info)
+            return obs
+        else:
+            obs, reward, done, info = self._multi_step(self.initial_info)
+            return obs
+
+        info = self._env.reset(train_mode=True)[self.brain_name]
+        
+        self.last_reset_info = info
+        self.last_action = "reset"
+
         n_agents = len(info.agents)
         self._check_agents(n_agents)
 
@@ -103,7 +122,7 @@ class UnityEnv(gym.Env):
             obs, reward, done, info = self._multi_step(info)
         return obs
 
-    def step(self, action):
+    def step(self, actions):
         """Run one timestep of the environment's dynamics. When end of
         episode is reached, you are responsible for calling `reset()`
         to reset this environment's state.
@@ -119,16 +138,32 @@ class UnityEnv(gym.Env):
         """
 
         # Use random actions for all other agents in environment.
-        if self._multiagent:
-            if not isinstance(action, list):
-                raise UnityGymException("The environment was expecting `action` to be a list.")
-            if len(action) != self._n_agents:
-                raise UnityGymException(
-                    "The environment was expecting a list of {} actions.".format(self._n_agents))
-            else:
-                action = np.array(action)
 
-        info = self._env.step(action)[self.brain_name]
+        agent_actions_tuples = list(actions.items())
+
+        expected_agent_ids = set(range(self._n_agents))
+        actual_agent_ids = set()
+        for agent_name, action in actions.items():
+            agent_id = int(agent_name.split('_')[-1])
+            actual_agent_ids.add(agent_id)
+
+        missing_agent_ids = expected_agent_ids - actual_agent_ids
+
+        for agent_id in missing_agent_ids:
+            agent_actions_tuples.append(('agent_' + str(agent_id), np.zeros(self.action_space.shape)))
+
+        agent_actions_tuples = sorted(agent_actions_tuples, key=lambda x: x[0])
+
+        flatten = lambda l: [item for sublist in l for item in sublist]
+        actions_array = [np.array(aa[1]) for aa in agent_actions_tuples]
+        actions_array = { "Brain": np.array(actions_array) }
+
+        info = self._env.step(
+            actions_array
+        )[self.brain_name]
+
+        self.last_action = "step"
+
         n_agents = len(info.agents)
         self._check_agents(n_agents)
         self._current_state = info
@@ -142,13 +177,24 @@ class UnityEnv(gym.Env):
     def _single_step(self, info):
         if self.use_visual:
             self.visual_obs = info.visual_observations[0][0, :, :, :]
-            default_observation = self.visual_obs
+            default_observation = { "agent_0": self.visual_obs }
         else:
-            default_observation = info.vector_observations[0, :]
+            default_observation = { "agent_0": info.vector_observations[0, :] }
 
-        return default_observation, info.rewards[0], info.local_done[0], {
-            "text_observation": info.text_observations[0],
-            "brain_info": info}
+        rewards = {
+            "agent_0": info.rewards[0]
+        }
+        dones = {
+            "agent_0": info.local_done[0]
+        }
+        infos = {
+            "agent_0": {
+                "text_observation": info.text_observations[0],
+                "brain_info": info
+            }
+        }
+
+        return default_observation, rewards, dones, infos
 
     def _multi_step(self, info):
         if self.use_visual:
@@ -156,9 +202,30 @@ class UnityEnv(gym.Env):
             default_observation = self.visual_obs
         else:
             default_observation = info.vector_observations
-        return list(default_observation), info.rewards, info.local_done, {
-            "text_observation": info.text_observations,
-            "brain_info": info}
+
+        obs = {}
+        rewards = {}
+        dones = {}
+        infos = {}
+
+        all_done = all(info.local_done)
+
+        for i in range(len(info.rewards)):
+            agent_id = "agent_" + str(i)
+            obs[agent_id] = info.visual_observations[0][0]
+            rewards[agent_id] = info.rewards[i]
+            dones[agent_id] = info.local_done[i]
+            dones["__all__"] = all(info.local_done)
+            # dones[agent_id] = all_done
+            # dones["__all__"] = all_done
+            infos[agent_id] = {
+                "text_observation": info.text_observations[i],
+                "brain_info": info
+            }
+        return obs, rewards, dones, infos
+        # return list(default_observation), info.rewards, info.local_done, {
+        #     "text_observation": info.text_observations,
+        #     "brain_info": info}
 
     def render(self, mode='rgb_array'):
         return self.visual_obs
@@ -185,10 +252,10 @@ class UnityEnv(gym.Env):
             raise UnityGymException(
                 "The environment was launched as a single-agent environment, however"
                 "there is more than one agent in the scene.")
-        elif self._multiagent and n_agents <= 1:
-            raise UnityGymException(
-                "The environment was launched as a mutli-agent environment, however"
-                "there is only one agent in the scene.")
+        # elif self._multiagent and n_agents <= 1:
+        #     raise UnityGymException(
+        #         "The environment was launched as a mutli-agent environment, however"
+        #         "there is only one agent in the scene.")
         if self._n_agents is None:
             self._n_agents = n_agents
             logger.info("{} agents within environment.".format(n_agents))
