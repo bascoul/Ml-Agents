@@ -355,7 +355,7 @@ namespace MLAgents.InferenceBrain
         {
             var vecObsSizeBp = _brainParameters.vectorObservationSize;
             var numStackedVector = _brainParameters.numStackedVectorObservations;
-            var totalVecObsSizeT = tensor.Shape[1];
+            var totalVecObsSizeT = tensor.Shape[tensor.Shape.Length - 1];
             if (vecObsSizeBp * numStackedVector != totalVecObsSizeT)
             {
                 return string.Format(
@@ -376,7 +376,7 @@ namespace MLAgents.InferenceBrain
         private string CheckPreviousActionShape(Tensor tensor)
         {
             var numberActionsBp = _brainParameters.vectorActionSize.Length;
-            var numberActionsT = tensor.Shape[1];
+            var numberActionsT = tensor.Shape[tensor.Shape.Length - 1];
             if  (numberActionsBp != numberActionsT)
             {
                 return string.Format(

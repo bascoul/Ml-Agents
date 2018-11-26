@@ -14,7 +14,7 @@ namespace MLAgents.InferenceBrain
         public void Apply(Tensor tensor, Dictionary<Agent, AgentInfo> agentInfo)
         {
             var tensorDataAction = tensor.Data as float[,];
-            var actionSize = tensor.Shape[1];
+            var actionSize = tensor.Shape[tensor.Shape.Length - 1];
             var agentIndex = 0;
             foreach (var agent in agentInfo.Keys)
             {
@@ -108,7 +108,7 @@ namespace MLAgents.InferenceBrain
         {
             var tensorDataMemory = tensor.Data as float[,];
             var agentIndex = 0;
-            var memorySize = tensor.Shape[1];
+            var memorySize = tensor.Shape[tensor.Shape.Length - 1];
             foreach (var agent in agentInfo.Keys)
             {
                 var memory = new List<float>();

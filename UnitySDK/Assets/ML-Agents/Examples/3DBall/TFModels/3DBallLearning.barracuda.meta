@@ -1,0 +1,10 @@
+fileFormatVersion: 2
+guid: b99b75e2624924a2dbc3c1df8cfc9c06
+ScriptedImporter:
+  fileIDToRecycleName:
+    11400000: Assets/ML-Agents/Examples/3DBall/TFModels/3DBallLearning.barracuda
+  externalObjects: {}
+  userData: Barracuda
+  assetBundleName: 
+  assetBundleVariant: 
+  script: {fileID: 11500000, guid: 220caf29b53fc479092f475fbf2a5c90, type: 3}
