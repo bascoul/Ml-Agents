@@ -113,7 +113,7 @@ namespace MLAgents
         [Tooltip("The engine-level settings which correspond to rendering " +
                  "quality and engine speed during Inference.")]
         EnvironmentConfiguration inferenceConfiguration =
-            new EnvironmentConfiguration(1280, 720, 5, 1.0f, 60);
+            new EnvironmentConfiguration(1280, 720, 5, 1.0f, 30);
 
         /// <summary>
         /// Contains a mapping from parameter names to float values. They are
@@ -396,7 +396,7 @@ namespace MLAgents
             Screen.SetResolution(config.width, config.height, false);
             QualitySettings.SetQualityLevel(config.qualityLevel, true);
             Time.timeScale = config.timeScale;
-            Time.captureFramerate = 60;
+//            Time.captureFramerate = 60;
             Application.targetFrameRate = config.targetFrameRate;
         }
 
