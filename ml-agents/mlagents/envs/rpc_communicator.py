@@ -50,7 +50,7 @@ class RpcCommunicator(Communicator):
 
         try:
             # Establish communication grpc
-            self.server = grpc.server(ThreadPoolExecutor(max_workers=10))
+            self.server = grpc.server(ThreadPoolExecutor(max_workers=20))
             self.unity_to_external = UnityToExternalServicerImplementation()
             add_UnityToExternalServicer_to_server(self.unity_to_external, self.server)
             self.server.add_insecure_port('localhost:' + str(self.port))

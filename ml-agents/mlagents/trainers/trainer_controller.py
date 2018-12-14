@@ -296,29 +296,61 @@ class TrainerController(object):
         tf.reset_default_graph()
 
         # Prevent a single session from taking all GPU memory.
-        self._initialize_trainers(trainer_config)
-        for _, t in self.trainers.items():
-            self.logger.info(t)
-        global_step = 0  # This is only for saving the model
-        curr_info = self._reset_env()
-        if self.train_model:
-            for brain_name, trainer in self.trainers.items():
-                trainer.write_tensorboard_text('Hyperparameters',
-                                               trainer.parameters)
-        try:
-            while any([t.get_step <= t.get_max_steps \
-                       for k, t in self.trainers.items()]) \
-                  or not self.train_model:
-                if self.meta_curriculum:
-                    # Get the sizes of the reward buffers.
-                    reward_buff_sizes = {k:len(t.reward_buffer) \
-                                        for (k,t) in self.trainers.items()}
-                    # Attempt to increment the lessons of the brains who
-                    # were ready.
-                    lessons_incremented = \
-                        self.meta_curriculum.increment_lessons(
-                            self._get_measure_vals(),
-                            reward_buff_sizes=reward_buff_sizes)
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True
+        with tf.Session(config=config) as sess:
+            self._initialize_trainers(trainer_config, sess)
+            for _, t in self.trainers.items():
+                self.logger.info(t)
+            init = tf.global_variables_initializer()
+            saver = tf.train.Saver(max_to_keep=self.keep_checkpoints)
+            # Instantiate model parameters
+            if self.load_model:
+                self.logger.info('Loading Model...')
+                ckpt = tf.train.get_checkpoint_state(self.model_path)
+                if ckpt is None:
+                    self.logger.info('The model {0} could not be found. Make '
+                                     'sure you specified the right '
+                                     '--run-id'
+                                     .format(self.model_path))
+                saver.restore(sess, ckpt.model_checkpoint_path)
+            else:
+                sess.run(init)
+            global_step = 0
+            curr_info = self._reset_env()
+            if self.train_model:
+                for brain_name, trainer in self.trainers.items():
+                    trainer.write_tensorboard_text('Hyperparameters',
+                                                   trainer.parameters)
+            try:
+                while any([t.get_step <= t.get_max_steps \
+                           for k, t in self.trainers.items()]) \
+                      or not self.train_model:
+                    if self.meta_curriculum:
+                        # Get the sizes of the reward buffers.
+                        reward_buff_sizes = {k:len(t.reward_buffer) \
+                                            for (k,t) in self.trainers.items()}
+                        # Attempt to increment the lessons of the brains who
+                        # were ready.
+                        lessons_incremented = \
+                            self.meta_curriculum.increment_lessons(
+                                self._get_measure_vals(),
+                                reward_buff_sizes=reward_buff_sizes)
+
+                    # If any lessons were incremented or the environment is
+                    # ready to be reset
+                    if (self.meta_curriculum
+                            and any(lessons_incremented.values())):
+                        curr_info = self._reset_env()
+                        for brain_name, trainer in self.trainers.items():
+                            trainer.end_episode()
+                        for brain_name, changed in lessons_incremented.items():
+                            if changed:
+                                self.trainers[brain_name].reward_buffer.clear()
+                    elif self.env.global_done:
+                        curr_info = self._reset_env()
+                        for brain_name, trainer in self.trainers.items():
+                            trainer.end_episode()
 
                 # If any lessons were incremented or the environment is
                 # ready to be reset
@@ -393,3 +425,4 @@ class TrainerController(object):
         self.env.close()
         if self.train_model:
             self._export_graph()
+        self.env.close()
