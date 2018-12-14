@@ -46,7 +46,7 @@ class RpcCommunicator(Communicator):
     def initialize(self, inputs: UnityInput) -> UnityOutput:
         try:
             # Establish communication grpc
-            self.server = grpc.server(ThreadPoolExecutor(max_workers=10))
+            self.server = grpc.server(ThreadPoolExecutor(max_workers=20))
             self.unity_to_external = UnityToExternalServicerImplementation()
             add_UnityToExternalServicer_to_server(self.unity_to_external, self.server)
             self.server.add_insecure_port('[::]:'+str(self.port))

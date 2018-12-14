@@ -323,7 +323,7 @@ class TrainerController(object):
                 saver.restore(sess, ckpt.model_checkpoint_path)
             else:
                 sess.run(init)
-            global_step = 0  # This is only for saving the model
+            global_step = 0
             curr_info = self._reset_env()
             if self.train_model:
                 for brain_name, trainer in self.trainers.items():
@@ -414,6 +414,6 @@ class TrainerController(object):
                                      'while the graph is generated.')
                     self._save_model(sess, steps=global_step, saver=saver)
                 pass
-        self.env.close()
         if self.train_model:
             self._export_graph()
+        self.env.close()
