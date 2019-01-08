@@ -143,7 +143,7 @@ class BrainParameters:
                                        brain_param_proto.vector_observation_size,
                                        brain_param_proto.num_stacked_vector_observations,
                                        resolution,
-                                       brain_param_proto.vector_action_size,
-                                       brain_param_proto.vector_action_descriptions,
+                                       list(brain_param_proto.vector_action_size),
+                                       list(brain_param_proto.vector_action_descriptions),
                                        brain_param_proto.vector_action_space_type)
         return brain_params

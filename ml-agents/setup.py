@@ -37,7 +37,8 @@ setup(
         'docopt',
         'pyyaml',
         'protobuf>=3.6,<3.7',
-        'grpcio>=1.11.0,<1.12.0', 
+        'grpcio>=1.11.0,<1.12.0',
+        'redis==2.10.6', 
         'ray==0.4.0'],
 
     python_requires=">=3.6,<3.7",
