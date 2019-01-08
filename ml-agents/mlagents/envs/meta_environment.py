@@ -64,13 +64,11 @@ class MetaUnityEnvironment(object):
         return self._unify_brain_info(results)
 
     def step(self, vector_action=None, memory=None, text_action=None, value = None):
-        print("Calling step...")
         if vector_action!= None :
             tmp = self._split_input(vector_action, memory, text_action)
             results = ray.get([c.step.remote(tmp[i]) for i, c in enumerate(self.actors)])
         else:
             results = ray.get([c.step.remote(None) for i, c in enumerate(self.actors)])
-        print("Calling step...")
         return self._unify_brain_info(results)
 
     def close(self):

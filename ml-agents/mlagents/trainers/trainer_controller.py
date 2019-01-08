@@ -48,7 +48,9 @@ class TrainerController(object):
         :param trainer_config_path: Fully qualified path to location of trainer
                configuration file.
         :param no_graphics: Whether to run the Unity simulator in no-graphics
-                            mode.
+               mode.
+        :param num_env: Number of concurrent training environment for one 
+               training session.
         """
         if env_path is not None:
             # Strip out executable extensions if passed
