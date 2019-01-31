@@ -235,7 +235,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 773be136e2f10487196164600a2f31c1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  experimentTime: 0
+  experimentTime: 10
   Cralwer: {fileID: 1306438584782738, guid: 1b9d167a4e71146a883212e4f08bda88, type: 2}
   NAgents: 01000000090000005a00000090010000
 --- !u!4 &1677525427
