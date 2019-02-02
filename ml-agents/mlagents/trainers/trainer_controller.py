@@ -16,7 +16,7 @@ import tensorflow as tf
 
 from mlagents.envs import AllBrainInfo, BrainInfo
 from mlagents.envs.exception import UnityEnvironmentException
-from mlagents.trainers import Trainer, Policy, ActionInfo
+from mlagents.trainers import Trainer, Policy
 from mlagents.trainers.ppo.trainer import PPOTrainer
 from mlagents.trainers.bc.offline_trainer import OfflineBCTrainer
 from mlagents.trainers.bc.online_trainer import OnlineBCTrainer
