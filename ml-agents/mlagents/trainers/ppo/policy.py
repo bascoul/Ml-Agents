@@ -3,7 +3,6 @@ import numpy as np
 
 from mlagents.trainers.ppo.models import PPOModel
 from mlagents.trainers.policy import Policy
-from mlagents.envs import BrainInfo
 
 logger = logging.getLogger("mlagents.trainers")
 
@@ -61,7 +60,7 @@ class PPOPolicy(Policy):
             self.update_dict['forward_loss'] = self.model.forward_loss
             self.update_dict['inverse_loss'] = self.model.inverse_loss
 
-    def evaluate(self, brain_info: BrainInfo):
+    def evaluate(self, brain_info):
         """
         Evaluates policy for the agent experiences provided.
         :param brain_info: BrainInfo object containing inputs.
