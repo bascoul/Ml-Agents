@@ -127,6 +127,19 @@ class BrainParameters:
                                                  str(self.vector_action_space_size),
                                                  ', '.join(self.vector_action_descriptions))
 
+    def __eq__(self, other):
+        """
+        Overrides the default of the == operator
+        """
+        if isinstance(other, BrainParameters):
+            return self.vector_action_space_size == other.vector_action_space_size and \
+                self.num_stacked_vector_observations == other.num_stacked_vector_observations and \
+                self.number_visual_observations == other.number_visual_observations and \
+                self.camera_resolutions == other.camera_resolutions and \
+                self.vector_action_space_size == other.vector_action_space_size and \
+                self.vector_action_space_type == other.vector_action_space_type
+        return False
+
     @staticmethod
     def from_proto(brain_param_proto):
         """
