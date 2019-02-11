@@ -3,6 +3,7 @@ import numpy as np
 
 from mlagents.trainers.ppo.models import PPOModel
 from mlagents.trainers.policy import Policy
+from mlagents.trainers.ppo.pre_training import PreTraining
 
 logger = logging.getLogger("mlagents.trainers")
 
@@ -37,10 +38,19 @@ class PPOPolicy(Policy):
                                   curiosity_enc_size=float(trainer_params['curiosity_enc_size']),
                                   seed=seed)
 
+        pre_trainer = None
         if load:
             self._load_graph()
         else:
+            if trainer_params['pre_training']:
+                with self.graph.as_default():
+                    pre_trainer = PreTraining(self.sess,
+                                              self.model,
+                                              self.brain,
+                                              trainer_params)
             self._initialize_graph()
+        if pre_trainer:
+            pre_trainer.update_policy()
 
         self.inference_dict = {'action': self.model.output, 'log_probs': self.model.all_log_probs,
                                'value': self.model.value, 'entropy': self.model.entropy,
@@ -49,9 +59,9 @@ class PPOPolicy(Policy):
             self.inference_dict['pre_action'] = self.model.output_pre
         if self.use_recurrent:
             self.inference_dict['memory_out'] = self.model.memory_out
-        if is_training and self.use_vec_obs and trainer_params['normalize']:
-            self.inference_dict['update_mean'] = self.model.update_mean
-            self.inference_dict['update_variance'] = self.model.update_variance
+        if is_training and self.use_vec_obs and trainer_params['normalize'] and \
+                pre_trainer is None and not load:
+            self.inference_dict['update_mean'] = self.model.update_normalization
 
         self.update_dict = {'value_loss': self.model.value_loss,
                             'policy_loss': self.model.policy_loss,

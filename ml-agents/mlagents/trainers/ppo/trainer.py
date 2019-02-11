@@ -34,7 +34,7 @@ class PPOTrainer(Trainer):
                            'learning_rate', 'max_steps', 'normalize', 'num_epoch', 'num_layers',
                            'time_horizon', 'sequence_length', 'summary_freq', 'use_recurrent',
                            'summary_path', 'memory_size', 'use_curiosity', 'curiosity_strength',
-                           'curiosity_enc_size', 'model_path']
+                           'curiosity_enc_size', 'model_path', 'pre_training']
 
         self.check_param_keys()
         self.use_curiosity = bool(trainer_parameters['use_curiosity'])

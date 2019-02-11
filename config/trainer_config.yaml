@@ -105,6 +105,7 @@ PyramidsLearning:
     beta: 1.0e-2
     max_steps: 5.0e5
     num_epoch: 3
+    pre_training: false
 
 VisualPyramidsLearning:
     use_curiosity: true

@@ -82,31 +82,39 @@ class LearningModel(object):
         self.vector_in = tf.placeholder(shape=[None, self.vec_obs_size], dtype=tf.float32,
                                         name=name)
         if self.normalize:
-            self.running_mean = tf.get_variable("running_mean", [self.vec_obs_size],
-                                                trainable=False, dtype=tf.float32,
-                                                initializer=tf.zeros_initializer())
-            self.running_variance = tf.get_variable("running_variance", [self.vec_obs_size],
-                                                    trainable=False,
-                                                    dtype=tf.float32,
-                                                    initializer=tf.ones_initializer())
-            self.update_mean, self.update_variance = self.create_normalizer_update(self.vector_in)
-
-            self.normalized_state = tf.clip_by_value((self.vector_in - self.running_mean) / tf.sqrt(
-                self.running_variance / (tf.cast(self.global_step, tf.float32) + 1)), -5, 5,
-                                                     name="normalized_state")
-            return self.normalized_state
+            self.create_normalizer(self.vector_in)
+            return self.normalize_vector_obs(self.vector_in)
         else:
             return self.vector_in
+
+    def normalize_vector_obs(self, vector_obs):
+        normalized_state = tf.clip_by_value((vector_obs - self.running_mean) / tf.sqrt(
+            self.running_variance / (tf.cast(self.normalization_steps, tf.float32) + 1)), -5, 5,
+                                                 name="normalized_state")
+        return normalized_state
+
+    def create_normalizer(self, vector_obs):
+        self.normalization_steps = tf.get_variable("normalization_steps", [],
+                                            trainable=False, dtype=tf.int32,
+                                            initializer=tf.ones_initializer())
+        self.running_mean = tf.get_variable("running_mean", [self.vec_obs_size],
+                                            trainable=False, dtype=tf.float32,
+                                            initializer=tf.zeros_initializer())
+        self.running_variance = tf.get_variable("running_variance", [self.vec_obs_size],
+                                                trainable=False, dtype=tf.float32,
+                                                initializer=tf.ones_initializer())
+        self.update_normalization = self.create_normalizer_update(vector_obs)
 
     def create_normalizer_update(self, vector_input):
         mean_current_observation = tf.reduce_mean(vector_input, axis=0)
         new_mean = self.running_mean + (mean_current_observation - self.running_mean) / \
-                   tf.cast(tf.add(self.global_step, 1), tf.float32)
+                   tf.cast(tf.add(self.normalization_steps, 1), tf.float32)
         new_variance = self.running_variance + (mean_current_observation - new_mean) * \
                        (mean_current_observation - self.running_mean)
         update_mean = tf.assign(self.running_mean, new_mean)
         update_variance = tf.assign(self.running_variance, new_variance)
-        return update_mean, update_variance
+        update_norm_step = tf.assign(self.normalization_steps, self.normalization_steps + 1)
+        return tf.group([update_mean, update_variance, update_norm_step])
 
     @staticmethod
     def create_vector_observation_encoder(observation_input, h_size, activation, num_layers, scope,
@@ -276,10 +284,10 @@ class LearningModel(object):
         mu = tf.layers.dense(hidden_policy, self.act_size[0], activation=None,
                              kernel_initializer=c_layers.variance_scaling_initializer(factor=0.01))
 
-        log_sigma_sq = tf.get_variable("log_sigma_squared", [self.act_size[0]], dtype=tf.float32,
+        self.log_sigma_sq = tf.get_variable("log_sigma_squared", [self.act_size[0]], dtype=tf.float32,
                                        initializer=tf.zeros_initializer())
 
-        sigma_sq = tf.exp(log_sigma_sq)
+        sigma_sq = tf.exp(self.log_sigma_sq)
 
         self.epsilon = tf.placeholder(shape=[None, self.act_size[0]], dtype=tf.float32, name='epsilon')
         # Clip and scale output to ensure actions are always within [-1, 1] range.
@@ -290,11 +298,11 @@ class LearningModel(object):
 
         # Compute probability of model output.
         all_probs = - 0.5 * tf.square(tf.stop_gradient(self.output_pre) - mu) / sigma_sq \
-                    - 0.5 * tf.log(2.0 * np.pi) - 0.5 * log_sigma_sq
+                    - 0.5 * tf.log(2.0 * np.pi) - 0.5 * self.log_sigma_sq
 
         self.all_log_probs = tf.identity(all_probs, name='action_probs')
 
-        self.entropy = 0.5 * tf.reduce_mean(tf.log(2 * np.pi * np.e) + log_sigma_sq)
+        self.entropy = 0.5 * tf.reduce_mean(tf.log(2 * np.pi * np.e) + self.log_sigma_sq)
 
         value = tf.layers.dense(hidden_value, 1, activation=None)
         self.value = tf.identity(value, name="value_estimate")
