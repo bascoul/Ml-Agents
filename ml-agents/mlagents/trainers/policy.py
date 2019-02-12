@@ -88,7 +88,7 @@ class Policy(object):
         """
         raise UnityPolicyException("The evaluate function was not implemented.")
 
-    def take_action(self, brain_info: BrainInfo) -> ActionInfo:
+    def get_action(self, brain_info: BrainInfo) -> ActionInfo:
         """
         Decides actions given observations information, and takes them in environment.
         :param brain_info: A dictionary of brain names and BrainInfo from environment.

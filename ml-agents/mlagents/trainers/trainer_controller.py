@@ -265,7 +265,7 @@ class TrainerController(object):
         take_action_value = {}
         take_action_outputs = {}
         for brain_name, policy in policies.items():
-            action_info = policy.take_action(curr_info[brain_name])
+            action_info = policy.get_action(curr_info[brain_name])
             take_action_vector[brain_name] = action_info.action
             take_action_memories[brain_name] = action_info.memory
             take_action_text[brain_name] = action_info.text

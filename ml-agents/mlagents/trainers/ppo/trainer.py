@@ -158,7 +158,7 @@ class PPOTrainer(Trainer):
         Adds experiences to each agent's experience history.
         :param curr_all_info: Dictionary of all current brains and corresponding BrainInfo.
         :param next_all_info: Dictionary of all current brains and corresponding BrainInfo.
-        :param take_action_outputs: The outputs of the take action method.
+        :param take_action_outputs: The outputs of the Policy's get_action method.
         """
 
         if take_action_outputs:
