@@ -7,6 +7,9 @@ from tensorflow.python.tools import freeze_graph
 from mlagents.trainers import tensorflow_to_barracuda as tf2bc
 from mlagents.envs import BrainInfo
 
+from typing import Dict, Any, NamedTuple
+import pickle
+
 logger = logging.getLogger("mlagents.trainers")
 
 
@@ -15,6 +18,14 @@ class UnityPolicyException(UnityException):
     Related to errors with the Trainer.
     """
     pass
+
+
+class PolicyDef(NamedTuple):
+    type: str
+    seed: int
+    brain: str
+    trainer_parameters: Dict
+    values: Any
 
 
 class Policy(object):
@@ -41,6 +52,7 @@ class Policy(object):
         self.sequence_length = 1
         self.seed = seed
         self.brain = brain
+        self.trainer_parameters = trainer_parameters
         self.use_recurrent = trainer_parameters["use_recurrent"]
         self.use_continuous_act = (brain.vector_action_space_type == "continuous")
         self.model_path = trainer_parameters["model_path"]
@@ -50,6 +62,7 @@ class Policy(object):
         config.gpu_options.allow_growth = True
         self.sess = tf.Session(config=config, graph=self.graph)
         self.saver = None
+        self._assign_ops = None
         if self.use_recurrent:
             self.m_size = trainer_parameters["memory_size"]
             self.sequence_length = trainer_parameters["sequence_length"]
@@ -61,6 +74,33 @@ class Policy(object):
                 raise UnityPolicyException("The memory size for brain {0} is {1} "
                                            "but it must be divisible by 4."
                                            .format(brain.brain_name, self.m_size))
+
+    def serialize_in_memory(self) -> PolicyDef:
+        with self.graph.as_default():
+            trainable_vars = tf.trainable_variables()
+            values = self.sess.run(trainable_vars)
+            values = [v.tolist() for v in values]
+            return PolicyDef(
+                self.__class__.__name__,
+                self.seed,
+                self.brain,
+                self.trainer_parameters,
+                values
+            )
+
+    def load_from_memory(self, values):
+        with self.graph.as_default():
+            assign_ops = []
+            feed_dict = {}
+            vs = tf.trainable_variables()
+            weights = zip(vs, values)
+            for var, value in weights:
+                value = np.asarray(value)
+                assign_placeholder = tf.placeholder(var.dtype, shape=value.shape)
+                assign_op = tf.assign(var, assign_placeholder)
+                assign_ops.append(assign_op)
+                feed_dict[assign_placeholder] = value
+            self.sess.run(assign_ops, feed_dict=feed_dict)
 
     def _initialize_graph(self):
         with self.graph.as_default():

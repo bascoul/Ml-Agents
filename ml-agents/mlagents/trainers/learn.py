@@ -9,12 +9,12 @@ import shutil
 import numpy as np
 import yaml
 from docopt import docopt
-from typing import Optional
+from typing import Optional, Callable
 
 
 from mlagents.trainers.trainer_controller import TrainerController
 from mlagents.trainers.exception import TrainerError
-from mlagents.trainers import MetaCurriculumError, MetaCurriculum
+from mlagents.trainers import MetaCurriculumError, MetaCurriculum, ActorManager
 from mlagents.envs import UnityEnvironment
 from mlagents.envs.exception import UnityEnvironmentException
 
@@ -68,34 +68,35 @@ def run_training(sub_id: int, run_seed: int, run_options, process_queue):
             docker_target_name=docker_target_name)
 
     trainer_config = load_config(trainer_config_path)
-    env = init_environment(env_path, docker_target_name, no_graphics, worker_id + sub_id, fast_simulation, run_seed)
-    maybe_meta_curriculum = try_create_meta_curriculum(curriculum_folder, env)
 
-    external_brains = {}
-    for brain_name in env.external_brain_names:
-        external_brains[brain_name] = env.brains[brain_name]
+    env_factory = init_environment(env_path, docker_target_name, no_graphics, run_seed)
+    actor_manager = ActorManager(env_factory)
+    maybe_meta_curriculum = try_create_meta_curriculum(
+        curriculum_folder, actor_manager.get_external_brains(), actor_manager.get_reset_parameters()
+    )
+    actor_manager.set_default_reset_params(maybe_meta_curriculum.get_config())
 
     # Create controller and begin training.
     tc = TrainerController(model_path, summaries_dir, run_id + '-' + str(sub_id),
                            save_freq, maybe_meta_curriculum,
                            load_model, train_model,
-                           keep_checkpoints, lesson, external_brains, run_seed)
+                           keep_checkpoints, lesson, actor_manager, run_seed)
 
     # Signal that environment has been launched.
     process_queue.put(True)
 
     # Begin training
-    tc.start_learning(env, trainer_config)
+    tc.start_learning(trainer_config)
 
 
-def try_create_meta_curriculum(curriculum_folder: Optional[str], env: UnityEnvironment) -> Optional[MetaCurriculum]:
+def try_create_meta_curriculum(curriculum_folder: Optional[str], external_brains, reset_params) -> Optional[MetaCurriculum]:
     if curriculum_folder is None:
         return None
     else:
-        meta_curriculum = MetaCurriculum(curriculum_folder, env._resetParameters)
+        meta_curriculum = MetaCurriculum(curriculum_folder, reset_params)
         if meta_curriculum:
             for brain_name in meta_curriculum.brains_to_curriculums.keys():
-                if brain_name not in env.external_brain_names:
+                if brain_name not in external_brains.keys():
                     raise MetaCurriculumError('One of the curricula '
                                               'defined in ' +
                                               curriculum_folder + ' '
@@ -143,7 +144,7 @@ def load_config(trainer_config_path):
                                         .format(trainer_config_path))
 
 
-def init_environment(env_path, docker_target_name, no_graphics, worker_id, fast_simulation, seed):
+def init_environment(env_path, docker_target_name, no_graphics, seed) -> Callable[[int], UnityEnvironment]:
     if env_path is not None:
         # Strip out executable extensions if passed
         env_path = (env_path.strip()
@@ -163,13 +164,16 @@ def init_environment(env_path, docker_target_name, no_graphics, worker_id, fast_
             # Navigate in docker path and find env_path and copy it.
             env_path = prepare_for_docker_run(docker_target_name,
                                               env_path)
-    return UnityEnvironment(
-        file_name=env_path,
-        worker_id=worker_id,
-        seed=seed,
-        docker_training=docker_training,
-        no_graphics=no_graphics
-    )
+
+    def create_unity_environment(worker_id: int) -> UnityEnvironment:
+        return UnityEnvironment(
+            file_name=env_path,
+            worker_id=worker_id,
+            seed=seed,
+            docker_training=docker_training,
+            no_graphics=no_graphics
+        )
+    return create_unity_environment
 
 
 def main():
