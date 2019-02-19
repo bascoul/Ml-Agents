@@ -39,6 +39,7 @@ class PPOTrainer(Trainer):
         self.check_param_keys()
         self.use_curiosity = bool(trainer_parameters['use_curiosity'])
         self.step = 0
+        self.experiences_processed = 0
         self.policy = PPOPolicy(seed, brain, trainer_parameters,
                                 self.is_training, load)
 
@@ -245,7 +246,7 @@ class PPOTrainer(Trainer):
         info = new_info[self.brain_name]
         for l in range(len(info.agents)):
             agent_actions = self.training_buffer[info.agents[l]]['actions']
-            if ((info.local_done[l] or len(agent_actions) > self.trainer_parameters['time_horizon'])
+            if (info.local_done[l] # or len(agent_actions) > self.trainer_parameters['time_horizon'])
                     and len(agent_actions) > 0):
                 agent_id = info.agents[l]
                 if info.local_done[l] and not info.max_reached[l]:
@@ -273,6 +274,7 @@ class PPOTrainer(Trainer):
                 self.training_buffer.append_update_buffer(agent_id, batch_size=None,
                                                           training_length=self.policy.sequence_length)
 
+                self.experiences_processed += len(agent_actions)
                 self.training_buffer[agent_id].reset_agent()
                 if info.local_done[l]:
                     self.stats['Environment/Cumulative Reward'].append(

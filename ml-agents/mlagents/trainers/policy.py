@@ -7,6 +7,9 @@ from tensorflow.python.tools import freeze_graph
 from mlagents.trainers import tensorflow_to_barracuda as tf2bc
 from mlagents.envs import BrainInfo
 
+from tensorflow.python.framework.graph_util import convert_variables_to_constants
+from tensorflow import import_graph_def
+
 from typing import Dict, Any, NamedTuple
 import pickle
 
@@ -78,29 +81,49 @@ class Policy(object):
     def serialize_in_memory(self) -> PolicyDef:
         with self.graph.as_default():
             trainable_vars = tf.trainable_variables()
-            values = self.sess.run(trainable_vars)
-            values = [v.tolist() for v in values]
+            # values = self.sess.run(trainable_vars)
+            # values = [v.tolist() for v in values]
+            graph_def = convert_variables_to_constants(self.sess, self.graph.as_graph_def(), self._process_graph())
             return PolicyDef(
                 self.__class__.__name__,
                 self.seed,
                 self.brain,
                 self.trainer_parameters,
-                values
+                graph_def
             )
+
+    @staticmethod
+    def load_from_policy_def(policy_def: PolicyDef, brain):
+        from mlagents.trainers import PPOPolicy, BCPolicy
+        if policy_def.type == 'PPOPolicy':
+            policy = PPOPolicy(policy_def.seed, brain, policy_def.trainer_parameters, True, False)
+            policy.load_from_memory(policy_def.values)
+            return policy
+        elif policy_def.type == 'BCPolicy':
+            policy = BCPolicy(policy_def.seed, brain, policy_def.trainer_parameters, False)
+            policy.load_from_memory(policy_def.values)
+            return policy
+        raise UnityPolicyException('Tried to load policy with invalid type: ' + policy_def.type)
 
     def load_from_memory(self, values):
         with self.graph.as_default():
-            assign_ops = []
-            feed_dict = {}
-            vs = tf.trainable_variables()
-            weights = zip(vs, values)
-            for var, value in weights:
-                value = np.asarray(value)
-                assign_placeholder = tf.placeholder(var.dtype, shape=value.shape)
-                assign_op = tf.assign(var, assign_placeholder)
-                assign_ops.append(assign_op)
-                feed_dict[assign_placeholder] = value
-            self.sess.run(assign_ops, feed_dict=feed_dict)
+            import_graph_def(values)
+            # create_assign_ops = False
+            # if not self._assign_ops:
+            #     self._assign_ops = []
+            #     create_assign_ops = True
+            #
+            # feed_dict = {}
+            # vs = tf.trainable_variables()
+            # weights = zip(vs, values)
+            # for var, value in weights:
+            #     value = np.asarray(value)
+            #     assign_placeholder = tf.placeholder(var.dtype, shape=value.shape)
+            #     if create_assign_ops:
+            #         assign_op = tf.assign(var, assign_placeholder)
+            #         self._assign_ops.append(assign_op)
+            #     feed_dict[assign_placeholder] = value
+            # self.sess.run(self._assign_ops, feed_dict=feed_dict)
 
     def _initialize_graph(self):
         with self.graph.as_default():

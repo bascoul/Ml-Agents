@@ -154,27 +154,28 @@ class Trainer(object):
         :param lesson_num: Current lesson number in curriculum.
         :param global_step: The number of steps the simulation has been going for
         """
-        if global_step % self.trainer_parameters['summary_freq'] == 0 and global_step != 0:
-            is_training = "Training." if self.is_training and self.get_step <= self.get_max_steps else "Not Training."
-            if len(self.stats['Environment/Cumulative Reward']) > 0:
-                mean_reward = np.mean(self.stats['Environment/Cumulative Reward'])
-                logger.info(" {}: {}: Step: {}. Mean Reward: {:0.3f}. Std of Reward: {:0.3f}. {}"
-                            .format(self.run_id, self.brain_name,
-                                    min(self.get_step, self.get_max_steps),
-                                    mean_reward, np.std(self.stats['Environment/Cumulative Reward']),
-                                    is_training))
-            else:
-                logger.info(" {}: {}: Step: {}. No episode was completed since last summary. {}"
-                            .format(self.run_id, self.brain_name, self.get_step, is_training))
-            summary = tf.Summary()
-            for key in self.stats:
-                if len(self.stats[key]) > 0:
-                    stat_mean = float(np.mean(self.stats[key]))
-                    summary.value.add(tag='{}'.format(key), simple_value=stat_mean)
-                    self.stats[key] = []
-            summary.value.add(tag='Environment/Lesson', simple_value=lesson_num)
-            self.summary_writer.add_summary(summary, self.get_step)
-            self.summary_writer.flush()
+        # if global_step % self.trainer_parameters['summary_freq'] == 0 and global_step != 0:
+        is_training = "Training." if self.is_training and self.get_step <= self.get_max_steps else "Not Training."
+        if len(self.stats['Environment/Cumulative Reward']) > 0:
+            mean_reward = np.mean(self.stats['Environment/Cumulative Reward'])
+            logger.info(" {}: {}: Step: {}. Mean Reward: {:0.3f}. Std of Reward: {:0.3f}. {}"
+                        .format(self.run_id, self.brain_name,
+                                min(self.get_step, self.get_max_steps),
+                                mean_reward, np.std(self.stats['Environment/Cumulative Reward']),
+                                is_training))
+            logger.info("Experiences processed: " + str(self.experiences_processed))
+        else:
+            logger.info(" {}: {}: Step: {}. No episode was completed since last summary. {}"
+                        .format(self.run_id, self.brain_name, self.get_step, is_training))
+        summary = tf.Summary()
+        for key in self.stats:
+            if len(self.stats[key]) > 0:
+                stat_mean = float(np.mean(self.stats[key]))
+                summary.value.add(tag='{}'.format(key), simple_value=stat_mean)
+                self.stats[key] = []
+        summary.value.add(tag='Environment/Lesson', simple_value=lesson_num)
+        self.summary_writer.add_summary(summary, self.get_step)
+        self.summary_writer.flush()
 
     def write_tensorboard_text(self, key, input_dict):
         """

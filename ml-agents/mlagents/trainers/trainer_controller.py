@@ -60,6 +60,7 @@ class TrainerController(object):
         self.meta_curriculum = meta_curriculum
         self.seed = training_seed
         self.actor_manager = actor_manager
+        self.policy_defs = None
         np.random.seed(self.seed)
         tf.set_random_seed(self.seed)
 
@@ -181,19 +182,12 @@ class TrainerController(object):
             A Data structure corresponding to the initial reset state of the
             environment.
         """
-        if self.meta_curriculum is not None:
-            return actor_manager.reset(config=self.meta_curriculum.get_config())
-        else:
-            return actor_manager.reset()
+        return actor_manager.reset()
 
     def policies(self) -> Dict[str, Policy]:
         return {brain_name: trainer.policy for brain_name, trainer in self.trainers.items()}
 
     def start_learning(self, trainer_config):
-        # TODO: Should be able to start learning at different lesson numbers
-        # for each curriculum.
-        if self.meta_curriculum is not None:
-            self.meta_curriculum.set_all_curriculums_to_lesson_num(self.lesson)
         self._create_model_path(self.model_path)
 
         tf.reset_default_graph()
@@ -211,11 +205,9 @@ class TrainerController(object):
                 # Add the _win_handler function to the windows console's handler function list
                 win32api.SetConsoleCtrlHandler(self._win_handler, True)
         try:
-            initial_curriculum_config = None
-            if self.meta_curriculum is not None:
-                initial_curriculum_config = self.meta_curriculum.get_config()
-            # self.update_policy_defs()
-            self.actor_manager.set_policies(self.policies())
+            self.update_policy_defs()
+            self.actor_manager.load_policies(self.policy_defs)
+            # self.actor_manager.set_policies(self.policies())
             while any([t.get_step <= t.get_max_steps
                        for k, t in self.trainers.items()]) \
                     or not self.train_model:
@@ -232,8 +224,71 @@ class TrainerController(object):
         if self.train_model:
             self._export_graph()
 
-    # def update_policy_defs(self):
-    #     self.policy_defs = {brain_name: trainer.policy.serialize_in_memory() for brain_name, trainer in self.trainers.items()}
+    def update_policy_defs(self):
+        self.policy_defs = {brain_name: trainer.policy.serialize_in_memory() for brain_name, trainer in self.trainers.items()}
+
+    # def advance_training(self, actor_manager: ActorManager):
+    #     if self.meta_curriculum:
+    #         # Get the sizes of the reward buffers.
+    #         reward_buff_sizes = {k: len(t.reward_buffer)
+    #                              for (k, t) in self.trainers.items()}
+    #         # Attempt to increment the lessons of the brains who
+    #         # were ready.
+    #         lessons_incremented = \
+    #             self.meta_curriculum.increment_lessons(
+    #                 self._get_measure_vals(),
+    #                 reward_buff_sizes=reward_buff_sizes)
+    #     else:
+    #         lessons_incremented = {}
+    #
+    #     # If any lessons were incremented or the environment is
+    #     # ready to be reset
+    #     if (self.meta_curriculum
+    #             and any(lessons_incremented.values())):
+    #         for brain_name, trainer in self.trainers.items():
+    #             trainer.end_episode()
+    #         for brain_name, changed in lessons_incremented.items():
+    #             if changed:
+    #                 self.trainers[brain_name].curriculum_lesson_changed()
+    #         actor_manager.set_default_reset_params(self.meta_curriculum.get_config())
+    #         self._reset_actors(actor_manager)
+    #     elif actor_manager.is_global_done():
+    #         self._reset_actors(actor_manager)
+    #         for brain_name, trainer in self.trainers.items():
+    #             trainer.end_episode()
+    #
+    #     curr_info = actor_manager.latest_experience.brain_info
+    #     experience = actor_manager.take_step()
+    #     new_info = experience.brain_info
+    #     take_action_outputs = experience.all_action_outputs
+    #
+    #     for brain_name, trainer in self.trainers.items():
+    #         trainer.add_experiences(curr_info, new_info,
+    #                                 take_action_outputs[brain_name])
+    #         trainer.process_experiences(curr_info, new_info)
+    #         if trainer.is_ready_update() and self.train_model \
+    #                 and trainer.get_step <= trainer.get_max_steps:
+    #             # Perform gradient descent with experience buffer
+    #             trainer.update_policy()
+    #             self.actor_manager.set_policies(self.policies())
+    #         # Write training statistics to Tensorboard.
+    #         if self.meta_curriculum is not None:
+    #             trainer.write_summary(
+    #                 self.global_step,
+    #                 lesson_num=self.meta_curriculum
+    #                     .brains_to_curriculums[brain_name]
+    #                     .lesson_num)
+    #         else:
+    #             trainer.write_summary(self.global_step)
+    #         if self.train_model \
+    #                 and trainer.get_step <= trainer.get_max_steps:
+    #             trainer.increment_step_and_update_last_reward()
+    #
+    #     self.global_step += 1
+    #     if self.global_step % self.save_freq == 0 and self.global_step != 0 \
+    #             and self.train_model:
+    #         # Save Tensorflow model
+    #         self._save_model(steps=self.global_step)
 
     def advance_training(self, actor_manager: ActorManager):
         if self.meta_curriculum:
@@ -253,12 +308,13 @@ class TrainerController(object):
         # ready to be reset
         if (self.meta_curriculum
                 and any(lessons_incremented.values())):
-            self._reset_actors(actor_manager)
             for brain_name, trainer in self.trainers.items():
                 trainer.end_episode()
             for brain_name, changed in lessons_incremented.items():
                 if changed:
                     self.trainers[brain_name].curriculum_lesson_changed()
+            actor_manager.set_default_reset_params(self.meta_curriculum.get_config())
+            self._reset_actors(actor_manager)
         elif actor_manager.is_global_done():
             self._reset_actors(actor_manager)
             for brain_name, trainer in self.trainers.items():
@@ -272,8 +328,9 @@ class TrainerController(object):
             take_action_outputs = experiences[i+1].all_action_outputs
 
             if policies_updated:
-                # self.update_policy_defs()
-                actor_manager.set_policies(self.policies())
+                self.update_policy_defs()
+                self.actor_manager.load_policies(self.policy_defs)
+                # self.actor_manager.set_policies(self.policies())
                 break
             for brain_name, trainer in self.trainers.items():
                 trainer.add_experiences(curr_info, new_info,
@@ -282,6 +339,7 @@ class TrainerController(object):
                 if trainer.is_ready_update() and self.train_model \
                         and trainer.get_step <= trainer.get_max_steps:
                     # Perform gradient descent with experience buffer
+                    trainer.write_summary(self.global_step)
                     trainer.update_policy()
                     policies_updated = True
                 # Write training statistics to Tensorboard.
@@ -291,15 +349,14 @@ class TrainerController(object):
                         lesson_num=self.meta_curriculum
                             .brains_to_curriculums[brain_name]
                             .lesson_num)
-                else:
-                    trainer.write_summary(self.global_step)
+                # else:
+                #     trainer.write_summary(self.global_step)
                 if self.train_model \
                         and trainer.get_step <= trainer.get_max_steps:
                     trainer.increment_step_and_update_last_reward()
-
-            self.global_step += 1
             if self.global_step % self.save_freq == 0 and self.global_step != 0 \
                     and self.train_model:
                 # Save Tensorflow model
                 self._save_model(steps=self.global_step)
+        self.global_step += 1
 

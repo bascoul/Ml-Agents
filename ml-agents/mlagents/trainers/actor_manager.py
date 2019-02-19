@@ -1,8 +1,7 @@
 from typing import *
 
-from mlagents.envs import AllBrainInfo, UnityEnvironment
+from mlagents.envs import BrainInfo, AllBrainInfo, UnityEnvironment
 from mlagents.trainers import PolicyDef, Policy
-from mlagents.trainers.ppo import PPOPolicy
 
 
 class Experience(NamedTuple):
@@ -10,21 +9,24 @@ class Experience(NamedTuple):
     all_action_outputs: Optional[Dict[str, Dict[str, Any]]]
 
 
+# class ActorManagerBuffer:
+#     def __init__(self, initial_experience: BrainInfo):
+#         self.agents = initial_experience.agents
+#         self.agent_buffers = {}
+#
+
 class ActorManager:
-    def __init__(self, env: Callable[[int], UnityEnvironment]):
-        self.env = env(0)
+    def __init__(self, env_factory: Callable[[int], UnityEnvironment], worker_id: int=0):
+        self.env: UnityEnvironment = env_factory(worker_id)
         self.latest_experience = None
         self._default_reset_params = None
         self.policies = {}
 
     def get_external_brains(self):
-        external_brains = {}
-        for brain_name in self.env.external_brain_names:
-            external_brains[brain_name] = self.env.brains[brain_name]
-        return external_brains
+        return self.env.external_brains
 
     def get_reset_parameters(self):
-        return self.env._resetParameters
+        return self.env.reset_parameters
 
     def set_policies(self, policies: Dict[str, Policy]):
         self.policies = policies
@@ -32,15 +34,17 @@ class ActorManager:
     def set_default_reset_params(self, reset_params: Dict[str, str]):
         self._default_reset_params = reset_params
 
-    # def load_policies(self, serialized_policies: Dict[str, PolicyDef]):
-    #     self.policies = {}
-    #     for brain_name, policy_def in serialized_policies.items():
-    #         if policy_def.type == 'PPOPolicy':
-    #             policy = PPOPolicy(policy_def.seed, policy_def.brain, policy_def.trainer_parameters, True, False)
-    #             policy.load_from_memory(policy_def.values)
-    #             self.policies[brain_name] = policy
+    def load_policies(self, serialized_policies: Dict[str, PolicyDef]):
+        self.policies = {}
+        for brain_name, policy_def in serialized_policies.items():
+            if brain_name in self.policies:
+                self.policies[brain_name].load_from_memory(serialized_policies[brain_name].values)
+            else:
+                self.policies[brain_name] = Policy.load_from_policy_def(
+                    policy_def, self.get_external_brains()[brain_name]
+                )
 
-    def reset(self, config=None) -> AllBrainInfo:
+    def reset(self, config=None) -> Experience:
         reset_params = {}
         if self._default_reset_params is not None and config is not None:
             reset_params = self._default_reset_params.copy()
@@ -50,10 +54,14 @@ class ActorManager:
         elif config is not None:
             reset_params = config
 
-        if reset_params is not None:
-            return self.env.reset(config=reset_params)
-        else:
-            return self.env.reset()
+        latest_brain_infos = \
+            self.env.reset(config=reset_params) if reset_params else \
+            self.env.reset()
+
+        self.latest_experience = Experience(
+            latest_brain_infos, None
+        )
+        return self.latest_experience
 
     def is_global_done(self):
         return self.env.global_done
@@ -61,7 +69,7 @@ class ActorManager:
     def close(self):
         self.env.close()
 
-    def take_step(self):
+    def take_step(self) -> Experience:
         # Decide and take an action
         take_action_vector = {}
         take_action_memories = {}
@@ -85,16 +93,16 @@ class ActorManager:
             take_action_outputs
         )
 
-    def advance_training(self):
+    def advance_training(self) -> List[Experience]:
         buffer: List[Experience] = [self.latest_experience]
-        any_agent_done = False
 
-        while not any_agent_done:
+        while True:
             self.latest_experience = self.take_step()
             buffer.append(self.latest_experience)
             for brain_name, brain_info in self.latest_experience.brain_info.items():
                 if any(brain_info.local_done):
-                    any_agent_done = True
                     break
+            if len(buffer) >= 128:
+                break
         return buffer
 

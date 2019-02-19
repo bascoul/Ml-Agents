@@ -127,6 +127,17 @@ class UnityEnvironment(object):
     def external_brain_names(self):
         return self._external_brain_names
 
+    @property
+    def reset_parameters(self):
+        return self._resetParameters
+
+    @property
+    def external_brains(self):
+        external_brains = {}
+        for brain_name in self.external_brain_names:
+            external_brains[brain_name] = self.brains[brain_name]
+        return external_brains
+
     def executable_launcher(self, file_name, docker_training, no_graphics):
         cwd = os.getcwd()
         file_name = (file_name.strip()

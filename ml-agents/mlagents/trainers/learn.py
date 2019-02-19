@@ -15,7 +15,10 @@ from typing import Optional, Callable
 from mlagents.trainers.trainer_controller import TrainerController
 from mlagents.trainers.exception import TrainerError
 from mlagents.trainers import MetaCurriculumError, MetaCurriculum, ActorManager
+from mlagents.trainers.subprocess_actor_manager import SubprocessActorManager
+from mlagents.trainers.async_actor_manager import ThreadedActorManager
 from mlagents.envs import UnityEnvironment
+from mlagents.envs.subprocess_environment import SubprocessUnityEnvironment
 from mlagents.envs.exception import UnityEnvironmentException
 
 
@@ -70,17 +73,22 @@ def run_training(sub_id: int, run_seed: int, run_options, process_queue):
     trainer_config = load_config(trainer_config_path)
 
     env_factory = init_environment(env_path, docker_target_name, no_graphics, run_seed)
-    actor_manager = ActorManager(env_factory)
+    actor_manager = SubprocessActorManager(env_factory, 4)
     maybe_meta_curriculum = try_create_meta_curriculum(
-        curriculum_folder, actor_manager.get_external_brains(), actor_manager.get_reset_parameters()
+        curriculum_folder, actor_manager.get_external_brains(), actor_manager.get_reset_parameters(), lesson
     )
-    actor_manager.set_default_reset_params(maybe_meta_curriculum.get_config())
+    if maybe_meta_curriculum:
+        actor_manager.set_default_reset_params(maybe_meta_curriculum.get_config())
+    actor_manager.reset()
 
+    trainer_seed = run_seed
+    if trainer_seed == -1:
+        trainer_seed = np.random.randint(0, 10000)
     # Create controller and begin training.
     tc = TrainerController(model_path, summaries_dir, run_id + '-' + str(sub_id),
                            save_freq, maybe_meta_curriculum,
                            load_model, train_model,
-                           keep_checkpoints, lesson, actor_manager, run_seed)
+                           keep_checkpoints, lesson, actor_manager, trainer_seed)
 
     # Signal that environment has been launched.
     process_queue.put(True)
@@ -89,7 +97,9 @@ def run_training(sub_id: int, run_seed: int, run_options, process_queue):
     tc.start_learning(trainer_config)
 
 
-def try_create_meta_curriculum(curriculum_folder: Optional[str], external_brains, reset_params) -> Optional[MetaCurriculum]:
+def try_create_meta_curriculum(
+        curriculum_folder: Optional[str], external_brains, reset_params, lesson: int
+) -> Optional[MetaCurriculum]:
     if curriculum_folder is None:
         return None
     else:
@@ -105,6 +115,9 @@ def try_create_meta_curriculum(curriculum_folder: Optional[str], external_brains
                                               'curriculum file has the same '
                                               'name as the Brain '
                                               'whose curriculum it defines.')
+        # TODO: Should be able to start learning at different lesson numbers
+        # for each curriculum.
+        meta_curriculum.set_all_curriculums_to_lesson_num(lesson)
         return meta_curriculum
 
 
@@ -166,13 +179,20 @@ def init_environment(env_path, docker_target_name, no_graphics, seed) -> Callabl
                                               env_path)
 
     def create_unity_environment(worker_id: int) -> UnityEnvironment:
+        env_seed = seed
+        if env_seed == -1:
+            env_seed = np.random.randint(0, 10000) * worker_id
         return UnityEnvironment(
             file_name=env_path,
             worker_id=worker_id,
-            seed=seed,
+            seed=env_seed,
             docker_training=docker_training,
             no_graphics=no_graphics
         )
+
+    def create_subprocess_unity_environment(worker_id: int):
+        return SubprocessUnityEnvironment(create_unity_environment, 8)
+
     return create_unity_environment
 
 
@@ -230,18 +250,13 @@ def main():
                            'when training from the editor.')
 
     jobs = []
-    run_seed = seed
 
     if num_runs == 1:
-        if seed == -1:
-            run_seed = np.random.randint(0, 10000)
-        run_training(0, run_seed, options, Queue())
+        run_training(0, seed, options, Queue())
     else:
         for i in range(num_runs):
-            if seed == -1:
-                run_seed = np.random.randint(0, 10000)
             process_queue = Queue()
-            p = Process(target=run_training, args=(i, run_seed, options, process_queue))
+            p = Process(target=run_training, args=(i, seed, options, process_queue))
             jobs.append(p)
             p.start()
             # Wait for signal that environment has successfully launched

@@ -50,8 +50,8 @@ SmallWallJumpLearning:
     buffer_size: 2048
     beta: 5.0e-3
     hidden_units: 256
-    summary_freq: 2000
-    time_horizon: 128
+    summary_freq: 1000
+    time_horizon: 10000
     num_layers: 2
     normalize: false
 
@@ -61,7 +61,7 @@ BigWallJumpLearning:
     buffer_size: 2048
     beta: 5.0e-3
     hidden_units: 256
-    summary_freq: 2000
+    summary_freq: 1000
     time_horizon: 128
     num_layers: 2
     normalize: false
@@ -158,13 +158,13 @@ CrawlerStaticLearning:
 
 CrawlerDynamicLearning:
     normalize: true
-    num_epoch: 3
+    num_epoch: 5
     time_horizon: 1000
     batch_size: 2024
-    buffer_size: 20240
+    buffer_size: 12144
     gamma: 0.995
     max_steps: 1e6
-    summary_freq: 3000
+    summary_freq: 500
     num_layers: 3
     hidden_units: 512
 
